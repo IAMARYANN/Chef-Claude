@@ -1,23 +1,27 @@
-import { HfInference } from '@huggingface/inference';
+import { HfInference } from "@huggingface/inference";
 
 const SYSTEM_PROMPT = `
 You are an assistant that receives a list of ingredients that a user has and suggests a recipe they could make with some or all of those ingredients. 
-You don't need to use every ingredient they mention in your recipe. The recipe can include additional ingredients they didn't mention, but try not to include too many extra ingredients. 
-Format your response in markdown to make it easier to render to a web page.
+You don't need to use every ingredient they mention in your recipe. The recipe can include additional ingredients they didn't mention, 
+but try not to include too many extra ingredients. Format your response in markdown to make it easier to render to a web page.
 `;
 
-// Use Vite/Webpack alternative or import from config.js
-const HF_ACCESS_TOKEN = import.meta.env.VITE_HF_ACCESS_TOKEN || "your_default_api_key_here";
+// ✅ Correct way to access environment variables in Vite
+const HF_ACCESS_TOKEN = import.meta.env.VITE_HF_ACCESS_TOKEN;
 
 if (!HF_ACCESS_TOKEN) {
-    console.error("Hugging Face API token is missing. Please set VITE_HF_ACCESS_TOKEN in your .env file.");
+    console.error("Hugging Face API token is missing. Set VITE_HF_ACCESS_TOKEN in your .env file.");
 }
 
 const hf = new HfInference(HF_ACCESS_TOKEN);
 
 export async function getRecipeFromMistral(ingredientsArr) {
+    if (!HF_ACCESS_TOKEN) {
+        return "Error: Missing Hugging Face API token.";
+    }
+
     if (!Array.isArray(ingredientsArr) || ingredientsArr.length === 0) {
-        throw new Error("Invalid input: ingredientsArr must be a non-empty array.");
+        return "Error: No ingredients provided.";
     }
 
     const ingredientsString = ingredientsArr.join(", ");
@@ -32,13 +36,15 @@ export async function getRecipeFromMistral(ingredientsArr) {
             max_tokens: 1024,
         });
 
+        console.log("API Response:", response);
+
         if (!response || !response.choices || response.choices.length === 0) {
             throw new Error("Invalid response from Hugging Face API");
         }
 
         return response.choices[0].message.content;
     } catch (err) {
-        console.error("Error fetching recipe:", err.message);
-        return "Sorry, I couldn't fetch a recipe at the moment.";
+        console.error("Error fetching recipe:", err);
+        return `Error: ${err.message}`;
     }
 }
